@@ -25,6 +25,7 @@ def make_file(filename, record_count, corrupt=False, wrong_version=False,
 
     records = [random.randint(0, 999999) for _ in range(record_count)]
     body = struct.pack(f'>{record_count}q', *records)
+    checksum = sum(body) % (2**32)
 
     magic    = b'XXXX' if corrupt else MAGIC
     version  = 9 if wrong_version else VERSION
@@ -32,13 +33,10 @@ def make_file(filename, record_count, corrupt=False, wrong_version=False,
     if size_mismatch:
         # 헤더에는 record_count 기록, body는 1개 적게 작성 → layout_fail
         body = struct.pack(f'>{record_count - 1}q', *records[:-1])
-        checksum = sum(body) % (2**32)
+
     elif partial_body:
         # body 뒤에 3바이트 추가 → body_size % 8 != 0 → layout_partial_fail
-        checksum = sum(body) % (2**32)
         body = body + b'\xff\xff\xff'
-    else:
-        checksum = sum(body) % (2**32)
 
     if wrong_checksum:
         checksum = (checksum + 1) % (2**32)   # 정상값에서 1 오프셋 → checksum_fail

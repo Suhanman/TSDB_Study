@@ -11,14 +11,13 @@ log_lines        = Counter('log_lines_total', '로그 라인 수',       ['level
 partition_exists     = Gauge('partition_exists',       '파티션 존재 여부',   ['date'])
 partition_file_count = Gauge('partition_file_count',   '파티션 파일 수',     ['date'])
 partition_bytes      = Gauge('partition_bytes',        '파티션 총 크기',     ['date'])
-partition_missing    = Counter('partition_missing_total', '파티션 미존재 횟수', ['date'])
+
 
 ldr_magic_ok             = Gauge('loader_magic_ok_total',             '헤더 정상 파일 수 누계')
 ldr_magic_fail           = Gauge('loader_magic_fail_total',           '헤더 손상 파일 수 누계')
 ldr_layout_ok            = Gauge('loader_layout_ok_total',            '레이아웃 검증 통과 파일 수 누계')
 ldr_layout_fail          = Gauge('loader_layout_fail_total',          '크기 불일치 파일 수 누계')
 ldr_layout_partial_fail  = Gauge('loader_layout_partial_fail_total',  '잔여 바이트 파일 수 누계')
-# ldr_layout_unpack_fail   = Gauge('loader_layout_unpack_fail_total',   '역직렬화 실패 파일 수 누계')
 ldr_checksum_fail        = Gauge('loader_checksum_fail_total',        '체크섬 불일치 파일 수 누계')
 ldr_ver_fail             = Gauge('loader_version_fail_total',         '버전 불일치 파일 수 누계')
 ldr_records              = Gauge('loader_total_records',              '처리한 총 레코드 수 누계')
@@ -69,8 +68,7 @@ def collect_partition():
             partition_file_count.labels(date=date_label).set(0)
             partition_bytes.labels(date=date_label).set(0)
 
-            # 파티션이 없으면 Missing 카운터 증가 (오늘 파티션이 아직 안 만들어진 경우 포함)
-            partition_missing.labels(date=date_label).inc()
+
 
 def collect_log():
     global log_offset
@@ -100,7 +98,6 @@ def collect_loader_stats():
         ldr_layout_ok.set(s.get('layout_ok', 0))
         ldr_layout_fail.set(s.get('layout_fail', 0))
         ldr_layout_partial_fail.set(s.get('layout_partial_fail', 0))
-        ldr_layout_unpack_fail.set(s.get('layout_unpack_fail', 0))
         ldr_checksum_fail.set(s.get('checksum_fail', 0))
         ldr_ver_fail.set(s.get('version_fail', 0))
         ldr_records.set(s.get('total_records', 0))
