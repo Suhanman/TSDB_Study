@@ -1,6 +1,7 @@
 # exporter.py
 # 역할: generator/loader가 만들어내는 모든 결과물을 감시해서 메트릭 노출
-import os, time, struct, datetime, json
+import os, time, struct,  json
+from datetime import date, timedelta
 from prometheus_client import start_http_server, Gauge, Counter
 
 # ── 메트릭 정의 ──────────────────────────────────
@@ -37,26 +38,39 @@ def collect_directory():
         dir_file_count.labels(path=d).set(len(files))
         dir_bytes_total.labels(path=d).set(total)
 
-def get_partition_path():
-    today = datetime.date.today()
-    return (
-        f"/data/lake/year={today.year}/month={today.month:02d}/day={today.day:02d}",
-        today.isoformat(),
-    )
+# def get_partition_path():
+#     today = datetime.date.today()
+#     return (
+#         f"/data/lake/year={today.year}/month={today.month:02d}/day={today.day:02d}",
+#         today.isoformat(),
+#     )
 
 def collect_partition():
-    path, date_label = get_partition_path()
-    if os.path.exists(path):
-        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-        total = sum(os.path.getsize(os.path.join(path, f)) for f in files)
-        partition_exists.labels(date=date_label).set(1)
-        partition_file_count.labels(date=date_label).set(len(files))
-        partition_bytes.labels(date=date_label).set(total)
-    else:
-        partition_exists.labels(date=date_label).set(0)
-        partition_file_count.labels(date=date_label).set(0)
-        partition_bytes.labels(date=date_label).set(0)
-        partition_missing.labels(date=date_label).inc()
+    today = date.today()
+
+    # 오늘을 포함하여 최근 7일간의 날짜를 계산
+    for i in range(7):
+        target_date = today - timedelta(days=i)
+
+        # 경로 구성: /data/lake/year=YYYY/month=MM/day=DD
+        path = f"/data/lake/year={target_date.year}/month={target_date.month:02d}/day={target_date.day:02d}"
+        date_label = target_date.isoformat() # "2026-03-16" 형식
+
+        if os.path.exists(path):
+            files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+            total_size = sum(os.path.getsize(os.path.join(path, f)) for f in files)
+
+            partition_exists.labels(date=date_label).set(1)
+            partition_file_count.labels(date=date_label).set(len(files))
+            partition_bytes.labels(date=date_label).set(total_size)
+        else:
+            # 파티션이 없는 경우 0으로 세팅하여 그래프에서 끊기지 않게 함
+            partition_exists.labels(date=date_label).set(0)
+            partition_file_count.labels(date=date_label).set(0)
+            partition_bytes.labels(date=date_label).set(0)
+
+            # 파티션이 없으면 Missing 카운터 증가 (오늘 파티션이 아직 안 만들어진 경우 포함)
+            partition_missing.labels(date=date_label).inc()
 
 def collect_log():
     global log_offset
@@ -66,9 +80,11 @@ def collect_log():
         with open(LOG_FILE, 'r') as f:
             f.seek(log_offset)
             for line in f:
-                if '[ERROR]'   in line: log_lines.labels(level='ERROR').inc()
+                if '[SUCCESS]' in line:
+                    log_lines.labels(level='SUCCESS').inc()
+                elif '[ERROR]'   in line: log_lines.labels(level='ERROR').inc()
                 elif '[WARNING]'  in line: log_lines.labels(level='WARNING').inc()
-                elif '[INFO]'  in line: log_lines.labels(level='INFO').inc()
+                elif '[ALL]'  in line: log_lines.labels(level='ALL').inc()
             log_offset = f.tell()
     except Exception:
         pass

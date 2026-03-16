@@ -1,4 +1,4 @@
-# generator.py
+
 # 역할: 실제 적재 시스템처럼 바이너리 파일을 주기적으로 /incoming에 생성
 import os, time, struct, random, logging
 
@@ -49,16 +49,19 @@ def make_file(filename, record_count, corrupt=False, wrong_version=False,
         f.write(header)
         f.write(body)
 
-    logging.info(f"파일 생성: {filename} ({record_count}건)")
+    logging.info(f"[ALL]파일 생성: {filename} ({record_count}건)")
     return filepath
 
 if __name__ == '__main__':
     file_num = 0
+    logging.info("바이너리 파일 생성기 시작 (간격: 랜덤 3~20초)")
+
     while True:
         file_num += 1
         record_count = random.randint(800, 1200)
-        filename     = f'data_{file_num:05d}.bin'   # ← 여기서 filename 정의
+        filename = f'data_{file_num:05d}.bin'
 
+        # --- 에러 시뮬레이션 로직 ---
         roll = random.random()
         if roll < 0.10:
             filepath = make_file(filename, record_count, corrupt=True)
@@ -77,6 +80,10 @@ if __name__ == '__main__':
             logging.warning(f"손상 파일 생성됨 (partial_body): {filename}")
         else:
             filepath = make_file(filename, record_count)
+        # ----------------------------
 
-        time.sleep(10)
+        # 3초에서 20초 사이의 랜덤한 간격으로 대기
+        sleep_time = random.uniform(3, 20)
+        logging.info(f"{filename} 생성 완료. {sleep_time:.2f}초 후 다음 파일 생성...")
 
+        time.sleep(sleep_time)

@@ -1,4 +1,4 @@
-# loader.py
+
 # 역할: /incoming 파일을 가져다 검증 후 /done 또는 /error로 이동
 #       처리 결과를 app.log에 기록 → exporter가 이 로그를 tail함
 import os, time, shutil, struct, logging, json, datetime
@@ -42,7 +42,7 @@ def save_stats():
 def validate_header(filepath):
     """
     헤더 검증 → (ok, reason, record_count,checksum) 반환
-    이 함수가 '바이너리 파일 헤더 분석'에 해당
+
     """
     try:
         with open(filepath, 'rb') as f:
@@ -67,7 +67,7 @@ def validate_header(filepath):
 def validate_layout(filepath, expected_count):
     """
     실제 데이터 레이아웃 검증 → (ok, reason, actual_count) 반환
-    body를 실제로 읽어 역직렬화까지 수행
+
     """
     try:
         file_size = os.path.getsize(filepath)
@@ -159,7 +159,7 @@ def process_file(filepath):
     done_path = os.path.join(DONE, filename)
     shutil.move(proc_path, done_path)
     shutil.copy(done_path, os.path.join(get_partition_path(), filename))
-    logging.info(f"처리 완료: {filename} records={actual_count} "
+    logging.info(f"[SUCCESS]처리 완료: {filename} records={actual_count} "
                  f"elapsed={elapsed:.3f}s")
     stats['layout_ok'] += 1
     stats['total_records'] += actual_count
