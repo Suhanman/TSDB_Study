@@ -8,29 +8,38 @@ This is a Week 1 study project simulating a time-series data pipeline with binar
 
 ## Running the scripts
 
-Each script runs as a standalone process:
+A `.venv` is already present. Each script runs as a standalone process:
 
 ```bash
-python generator.py   # Generates binary .bin files into /data/incoming every 10s
-python loader.py      # Validates and routes files from /data/incoming to /done or /error
-python exporter.py    # Exposes Prometheus metrics at http://localhost:8000/metrics
+.venv/bin/python generator.py   # Generates binary .bin files into /data/incoming
+.venv/bin/python loader.py      # Validates and routes files from /data/incoming to /done or /error
+.venv/bin/python exporter.py    # Exposes Prometheus metrics at http://localhost:8000/metrics
 ```
 
-Install the single external dependency:
+To install the single external dependency into the venv:
 
 ```bash
-pip install prometheus_client
+.venv/bin/pip install prometheus_client
 ```
 
 ## Architecture
 
 The pipeline has three stages connected by a shared `/data/` directory on the filesystem:
 
-1. **generator.py** — Produces binary files (`data_NNNNN.bin`) in `/data/incoming/`. ~10% are corrupted (bad magic bytes), ~5% have wrong version numbers. Also copies every file into a date-partitioned data lake at `/data/lake/year=YYYY/month=MM/day=DD/`.
+1. **generator.py** — Produces binary files (`data_NNNNN.bin`) in `/data/incoming/` at random 3–20s intervals. Deliberately injects errors: ~10% bad magic, ~5% wrong version, ~5% wrong checksum, ~3% size mismatch, ~2% partial body (~25% total error rate).
 
-2. **loader.py** — Polls `/data/incoming/` every 2 seconds. Moves each file to `/data/processing/` while validating, then routes to `/data/done/` (success) or `/data/error/` (failure). Logs all results to `/data/logs/app.log`.
+2. **loader.py** — Polls `/data/incoming/` every 2 seconds. Moves each file to `/data/processing/` while validating (header → layout → checksum), then routes to `/data/done/` (success) or `/data/error/` (failure). On success, **also copies the file to the date-partitioned data lake** at `/data/lake/year=YYYY/month=MM/day=DD/`. Persists cumulative stats to `/data/logs/loader_stats.json`.
 
-3. **exporter.py** — Polls every 5 seconds. Tails `app.log` for log-level counts and inspects binary files in `/data/incoming/` for header/layout metrics. Exposes everything as Prometheus gauges and counters.
+3. **exporter.py** — Polls every 5 seconds. Tails `app.log` for keyword-based log-level counts (`[SUCCESS]`, `[ERROR]`, `[WARNING]`, `[ALL]`) and reads `loader_stats.json` for validation counters. Also scans pipeline dirs and last-7-days lake partitions. Exposes everything as Prometheus gauges/counters at `:8000/metrics`.
+
+### Inter-process shared state
+
+| File | Written by | Read by |
+|---|---|---|
+| `/data/logs/app.log` | generator, loader | exporter (`collect_log`) |
+| `/data/logs/loader_stats.json` | loader | exporter (`collect_loader_stats`) |
+| `/data/incoming/`, `/data/done/`, `/data/error/` | generator, loader | loader, exporter |
+| `/data/lake/year=.../...` | loader (on success) | exporter (`collect_partition`) |
 
 ## Binary file format
 

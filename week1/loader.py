@@ -29,7 +29,7 @@ def load_stats():
     except Exception:
         return {'magic_ok': 0, 'magic_fail': 0,
                 'layout_ok': 0, 'layout_fail': 0,
-                'layout_partial_fail': 0, 'layout_unpack_fail': 0,
+                'layout_partial_fail': 0,
                 'checksum_fail': 0,
                 'version_fail': 0, 'total_records': 0}
 
@@ -139,8 +139,6 @@ def process_file(filepath):
                       f"expected={record_count} actual={actual_count}")
         if reason == 'partial':
             stats['layout_partial_fail'] += 1
-        elif reason == 'unpack_fail':
-            stats['layout_unpack_fail'] += 1
         else:
             stats['layout_fail'] += 1
         save_stats()
