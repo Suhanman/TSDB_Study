@@ -13,5 +13,6 @@ VERSION : 2
 
 ### counter 와 gauge
 Counter는 값이 0부터 시작해서 계속 늘어나기만 하는 누적 메트릭
+
 Gauge는 현재의 상태를 나타내는 수치
 
