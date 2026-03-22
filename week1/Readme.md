@@ -64,8 +64,11 @@ if size_mismatch:
 ## loader.py : 파일을 검증한 후 알맞은 디렉터리에 적재합니다.
 
 /data/incoming -> /data/processing(파일 검증을 하기위해 검증 디렉터리에 적재)
+
 /data/processing -> /data/done (파일이 문제가 없는 파일일 경우)
+
 /data/processing -> /data/error (파일에 문제가 있을 경우)
+
 /data/done -> /data/lake/YYYY/MM/DD (검증된 파일 보관)
 
 
