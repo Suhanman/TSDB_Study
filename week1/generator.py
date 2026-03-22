@@ -31,7 +31,7 @@ def make_file(filename, record_count, corrupt=False, wrong_version=False,
     version  = 9 if wrong_version else VERSION
 
     if size_mismatch:
-        # 헤더에는 record_count 기록, body는 1개 적게 작성 → layout_fail
+        # 헤더에는 record_count 기록, body는 1개 적게 작성
         body = struct.pack(f'>{record_count - 1}q', *records[:-1])
 
     elif partial_body:
